@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/hex"
+	"crypto/md5"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -55,6 +58,7 @@ type ResultsData struct {
 	Updated  string `json:"updated" structs:"updated"`
 	Error    string `json:"error" structs:"error"`
 	MarkDown string `json:"markdown,omitempty" structs:"markdown,omitempty"`
+	MD5Hash string `json:"md5,omitempty"`
 }
 
 func assert(err error) {
@@ -98,7 +102,6 @@ func RunCommand(ctx context.Context, cmd string, args ...string) (string, error)
 
 // AvScan performs antivirus scan
 func AvScan(timeout int) ClamAV {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
@@ -203,7 +206,6 @@ func webService() {
 }
 
 func webAvScan(w http.ResponseWriter, r *http.Request) {
-
 	r.ParseMultipartForm(32 << 20)
 	file, header, err := r.FormFile("malware")
 	if err != nil {
@@ -215,25 +217,21 @@ func webAvScan(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug("Uploaded fileName: ", header.Filename)
 
-	tmpfile, err := ioutil.TempFile("/malware", "web_")
+	tmpfile, err := ioutil.TempFile("/dev/shm", "web_")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer os.Remove(tmpfile.Name()) // clean up
-
-	data, err := ioutil.ReadAll(file)
-	assert(err)
-
-	if _, err = tmpfile.Write(data); err != nil {
-		log.Fatal(err)
-	}
-	if err = tmpfile.Close(); err != nil {
-		log.Fatal(err)
-	}
+	hash := md5.New()
+	mw := io.MultiWriter(tmpfile, hash)
+	io.Copy(mw, file)
+	tmpfile.Close()
+	md5hash := hex.EncodingToString(hash.sum(nil))
 
 	// Do AV scan
 	path = tmpfile.Name()
 	clamav := AvScan(60)
+	clamav.MD5Hash = md5hash
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)

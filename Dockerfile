@@ -2,7 +2,7 @@ FROM malice/alpine
 
 LABEL maintainer "https://github.com/blacktop"
 
-LABEL malice.plugin.repository = "https://github.com/malice-plugins/clamav.git"
+LABEL malice.plugin.repository = "https://github.com/chennqqi/docker-clamav.git"
 LABEL malice.plugin.category="av"
 LABEL malice.plugin.mime="*"
 LABEL malice.plugin.docker.engine="*"
