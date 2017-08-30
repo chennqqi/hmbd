@@ -3,9 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"encoding/hex"
 	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -58,7 +58,7 @@ type ResultsData struct {
 	Updated  string `json:"updated" structs:"updated"`
 	Error    string `json:"error" structs:"error"`
 	MarkDown string `json:"markdown,omitempty" structs:"markdown,omitempty"`
-	MD5Hash string `json:"md5,omitempty"`
+	MD5Hash  string `json:"md5,omitempty"`
 }
 
 func assert(err error) {
@@ -226,12 +226,12 @@ func webAvScan(w http.ResponseWriter, r *http.Request) {
 	mw := io.MultiWriter(tmpfile, hash)
 	io.Copy(mw, file)
 	tmpfile.Close()
-	md5hash := hex.EncodingToString(hash.sum(nil))
+	md5hash := hex.EncodeToString(hash.Sum(nil))
 
 	// Do AV scan
 	path = tmpfile.Name()
 	clamav := AvScan(60)
-	clamav.MD5Hash = md5hash
+	clamav.Results.MD5Hash = md5hash
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
