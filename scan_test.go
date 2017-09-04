@@ -20,5 +20,4 @@ func TestParseResult(t *testing.T) {
 		t.Log("Result: ", results.Result)
 		t.Log("Engine: ", results.Engine)
 	}
-
 }
