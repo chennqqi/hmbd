@@ -49,7 +49,7 @@ func (p *updateCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}
 		if err == nil {
 			v := versionExp.FindAllStringSubmatch(r, 1)
 			if len(v) > 0 {
-				ioutil.WriteFile("/opt/hmb/UPDATED", []byte(v[0][1]), 0644)
+				ioutil.WriteFile("/opt/hmb/VERSION", []byte(v[0][1]), 0644)
 			}
 		}
 	}

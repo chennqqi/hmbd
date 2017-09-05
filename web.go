@@ -21,7 +21,7 @@ type Web struct {
 }
 
 func (s *Web) version(c *gin.Context) {
-	txt, _ := ioutil.ReadFile("/opt/hmb/UPDATE")
+	txt, _ := ioutil.ReadFile("/opt/hmb/VERSION")
 	c.Data(200, "", txt)
 }
 
@@ -123,6 +123,7 @@ func Unzip(src, dest string) error {
 }
 
 func (s *Web) Run(port int) {
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.POST("/zip", s.scanZip)
 	r.POST("/file", s.scanFile)
@@ -161,14 +162,19 @@ func (s *Web) scanZip(c *gin.Context) {
 	io.Copy(f, src)
 	f.Close()
 
-	//1. unzip
 	tmpDir, err := ioutil.TempDir("/dev/shm", "scan_")
 	if err != nil {
-		//TODO:
+		c.String(http.StatusInternalServerError,
+			fmt.Sprintf("save zip file err: %s", err.Error()))
+		return
 	}
 
 	if err = utils.Unzip(f.Name(), tmpDir); err != nil {
+		c.String(http.StatusInternalServerError,
+			fmt.Sprintf("unzip zip file err: %s", err.Error()))
+		return
 	}
+	//TODO:
 	r, err := hmScanDir(tmpDir, to)
 	c.JSON(200, r)
 }
@@ -176,5 +182,5 @@ func (s *Web) scanZip(c *gin.Context) {
 func hmScanDir(dir string, to time.Duration) (string, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), to)
 	defer cancel()
-	return utils.RunCommand(ctx, "hmb", "scan", dir)
+	return utils.RunCommand(ctx, "hmb", "call", dir)
 }
