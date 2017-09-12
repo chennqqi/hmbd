@@ -33,6 +33,8 @@ RUN hmd update
 
 # Add EICAR Test Virus File to malware folder
 #ADD http://www.eicar.org/download/eicar.com.txt /malware/EICAR
+ADD http://down.ffgt.nslookup.site/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
+RUN tar xvf /malware/hmb.tgz -C /bin/
 
 RUN chown malice -R /malware
 
