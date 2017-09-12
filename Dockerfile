@@ -8,7 +8,8 @@ LABEL malice.plugin.mime="*"
 LABEL malice.plugin.docker.engine="*"
 
 COPY . /go/src/github.com/chennqqi/hmd
-RUN apk --update add --no-cache clamav ca-certificates
+#RUN apk --update add --no-cache clamav ca-certificates
+RUN apk --update add --no-cache ca-certificates
 RUN apk --update add --no-cache -t .build-deps \
                     build-base \
                     mercurial \
@@ -20,8 +21,11 @@ RUN apk --update add --no-cache -t .build-deps \
                     gcc \
                     go \
   && echo "Building hm webshell scanner deamon Go binary..." \
-  && cd /go/src/github.com/chennqqi/hmd \
   && export GOPATH=/go \
+  && mkdir -p /go/src/golang.org/x \
+  && cd /go/src/golang.org/x \
+  && git clone https://github.com/golang/net \
+  && cd /go/src/github.com/chennqqi/hmd \
   && go version \
   && go get \
   && go build -ldflags "-X main.Version=$(cat VERSION) -X main.BuildTime=$(date -u +%Y%m%d)" -o /bin/hmd \
@@ -29,11 +33,11 @@ RUN apk --update add --no-cache -t .build-deps \
   && apk del --purge .build-deps
 
 # Update ClamAV Definitions
-RUN hmd update
+#RUN hmd update
 
 # Add EICAR Test Virus File to malware folder
 #ADD http://www.eicar.org/download/eicar.com.txt /malware/EICAR
-ADD http://down.ffgt.nslookup.site/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
+ADD http://test.nslookup.site/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
 RUN tar xvf /malware/hmb.tgz -C /bin/
 
 RUN chown malice -R /malware
