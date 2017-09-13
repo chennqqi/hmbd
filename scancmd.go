@@ -37,6 +37,7 @@ func (p *scanCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) 
 	params = append(params, "scan")
 	params = append(params, dirs...)
 	ctx := context.TODO()
-	fmt.Println(utils.RunCommand(ctx, "hmb", params...))
+	r,_ := utils.RunCommand(ctx, "hmb", params...)
+	fmt.Println(r)
 	return subcommands.ExitSuccess
 }

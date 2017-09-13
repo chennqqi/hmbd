@@ -28,7 +28,7 @@ RUN apk --update add --no-cache -t .build-deps \
   && cd /go/src/github.com/chennqqi/hmd \
   && go version \
   && go get \
-  && go build -ldflags "-X main.Version=$(cat VERSION) -X main.BuildTime=$(date -u +%Y%m%d)" -o /bin/hmd \
+  && go build -ldflags "-X main.Version=$(cat VERSION) -X main.BuildTime=$(date -u +%Y%m%d)" -o /bin/hmbd \
   && rm -rf /go /usr/local/go /usr/lib/go /tmp/* \
   && apk del --purge .build-deps
 
@@ -37,12 +37,13 @@ RUN apk --update add --no-cache -t .build-deps \
 
 # Add EICAR Test Virus File to malware folder
 #ADD http://www.eicar.org/download/eicar.com.txt /malware/EICAR
-ADD http://test.nslookup.site/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
+#ADD http://test.nslookup.site/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
+ADD http://www.webshell.pub/v1/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
 RUN tar xvf /malware/hmb.tgz -C /bin/
 
 RUN chown malice -R /malware
 
 WORKDIR /malware
 
-ENTRYPOINT ["su-exec","malice","/sbin/tini","--","avscan"]
+ENTRYPOINT ["hmbd"]
 CMD ["--help"]

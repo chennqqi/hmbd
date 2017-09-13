@@ -29,6 +29,11 @@ func (p *versionCmd) SetFlags(*flag.FlagSet) {
 
 func (p *versionCmd) Execute(_ context.Context, f *flag.FlagSet, _ ...interface{}) subcommands.ExitStatus {
 	ctx := context.TODO()
-	fmt.Println(utils.RunCommand(ctx, "hmb", "version"))
+	r, err := utils.RunCommand(ctx, "hmb", "version")
+	if err==nil{
+		fmt.Println(r)
+	} else {
+		fmt.Println(r,err)
+	}
 	return subcommands.ExitSuccess
 }
