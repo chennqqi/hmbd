@@ -60,7 +60,7 @@ func (s *Web) scanFile(c *gin.Context) {
 
 	r, _ := hmScanDir(f.Name(), to)
 	//TODO: call hm scan dir
-	c.JSON(200, r)
+	c.String(200, "application/json", r)
 }
 
 func Unzip(src, dest string) error {
@@ -176,7 +176,7 @@ func (s *Web) scanZip(c *gin.Context) {
 	}
 	//TODO:
 	r, err := hmScanDir(tmpDir, to)
-	c.JSON(200, r)
+	c.String(200, "application/json", r)
 }
 
 func hmScanDir(dir string, to time.Duration) (string, error) {
