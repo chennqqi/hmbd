@@ -47,6 +47,7 @@ func (s *Web) scanFile(c *gin.Context) {
 	}
 	defer src.Close()
 	tmpDir, err := ioutil.TempDir("/dev/shm", "file")
+	defer os.Remove(tmpDir)
 	if err != nil {
 	}
 	f, err := ioutil.TempFile(tmpDir, "scan_")
@@ -58,9 +59,10 @@ func (s *Web) scanFile(c *gin.Context) {
 	io.Copy(f, src)
 	f.Close()
 
-	r, _ := hmScanDir(f.Name(), to)
+	r, _ := hmScanDir(tmpDir, to)
 	//TODO: call hm scan dir
-	c.String(200, "application/json", r)
+	c.Header("Content-type", "application/json")
+	c.String(200, r)
 }
 
 func Unzip(src, dest string) error {
@@ -168,18 +170,24 @@ func (s *Web) scanZip(c *gin.Context) {
 			fmt.Sprintf("save zip file err: %s", err.Error()))
 		return
 	}
+	os.Remove(tmpDir)
 
 	if err = utils.Unzip(f.Name(), tmpDir); err != nil {
 		c.String(http.StatusInternalServerError,
 			fmt.Sprintf("unzip zip file err: %s", err.Error()))
 		return
 	}
+	defer os.RemoveAll(tmpDir)
+
 	//TODO:
 	r, err := hmScanDir(tmpDir, to)
-	c.String(200, "application/json", r)
+	c.Header("Content-type", "application/json")
+	c.String(200, r)
 }
 
 func hmScanDir(dir string, to time.Duration) (string, error) {
+	fmt.Println("start scan ", dir)
+	time.Sleep(time.Second*20)
 	ctx, cancel := context.WithTimeout(context.TODO(), to)
 	defer cancel()
 	return utils.RunCommand(ctx, "hmb", "call", dir)

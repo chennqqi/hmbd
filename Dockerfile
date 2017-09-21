@@ -2,12 +2,12 @@ FROM malice/alpine
 
 LABEL maintainer "https://github.com/chennqqi"
 
-LABEL malice.plugin.repository = "https://github.com/chennqqi/hmd.git"
+LABEL malice.plugin.repository = "https://github.com/chennqqi/hmbd.git"
 LABEL malice.plugin.category="av"
 LABEL malice.plugin.mime="*"
 LABEL malice.plugin.docker.engine="*"
 
-COPY . /go/src/github.com/chennqqi/hmd
+COPY . /go/src/github.com/chennqqi/hmbd
 #RUN apk --update add --no-cache clamav ca-certificates
 RUN apk --update add --no-cache ca-certificates
 RUN apk --update add --no-cache -t .build-deps \
@@ -25,25 +25,25 @@ RUN apk --update add --no-cache -t .build-deps \
   && mkdir -p /go/src/golang.org/x \
   && cd /go/src/golang.org/x \
   && git clone https://github.com/golang/net \
-  && cd /go/src/github.com/chennqqi/hmd \
+  && cd /go/src/github.com/chennqqi/hmbd \
   && go version \
   && go get \
   && go build -ldflags "-X main.Version=$(cat VERSION) -X main.BuildTime=$(date -u +%Y%m%d)" -o /bin/hmbd \
   && rm -rf /go /usr/local/go /usr/lib/go /tmp/* \
   && apk del --purge .build-deps
 
-# Update ClamAV Definitions
-#RUN hmd update
-
-# Add EICAR Test Virus File to malware folder
-#ADD http://www.eicar.org/download/eicar.com.txt /malware/EICAR
-#ADD http://test.nslookup.site/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
-ADD http://www.webshell.pub/v1/hmb/hmb-linux-amd64.tgz /malware/hmb.tgz
-RUN tar xvf /malware/hmb.tgz -C /bin/
 
 RUN chown malice -R /malware
-
 WORKDIR /malware
 
+# Add hmb soft 
+ADD http://down.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
+RUN tar xvf /malware/hmb.tgz -C /malware
+RUN ln -s /malware/hmb /bin/hmb
+
+# Update ClamAV Definitions
+#RUN hmb update
+
 ENTRYPOINT ["hmbd"]
+#ENTRYPOINT ["su-exec","malice","/sbin/tini","--","avscan"]
 CMD ["--help"]
