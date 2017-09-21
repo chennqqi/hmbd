@@ -187,7 +187,7 @@ func (s *Web) scanZip(c *gin.Context) {
 
 func hmScanDir(dir string, to time.Duration) (string, error) {
 	fmt.Println("start scan ", dir)
-	time.Sleep(time.Second*20)
+//	time.Sleep(time.Second*20)
 	ctx, cancel := context.WithTimeout(context.TODO(), to)
 	defer cancel()
 	return utils.RunCommand(ctx, "hmb", "call", dir)
