@@ -1,11 +1,5 @@
-malice-clamav
+hmbd
 =============
-
-[![Circle CI](https://circleci.com/gh/malice-plugins/clamav.png?style=shield)](https://circleci.com/gh/malice-plugins/clamav)
-[![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
-[![Docker Stars](https://img.shields.io/docker/stars/malice/clamav.svg)](https://hub.docker.com/r/malice/clamav/)
-[![Docker Pulls](https://img.shields.io/docker/pulls/malice/clamav.svg)](https://hub.docker.com/r/malice/clamav/)
-[![Docker Image](https://img.shields.io/badge/docker%20image-188MB-blue.svg)](https://hub.docker.com/r/malice/clamav/)
 
 This repository contains a **Dockerfile** of [ClamAV](http://www.clamav.net/lang/en/) for [Docker](https://www.docker.io/)'s [trusted build](https://index.docker.io/u/malice/clamav/) published to the public [DockerHub](https://index.docker.io/).
 
@@ -20,70 +14,112 @@ This repository contains a **Dockerfile** of [ClamAV](http://www.clamav.net/lang
 
 ### Usage
 
-```
-docker run --rm malice/clamav EICAR
-```
+copy license
+	
+	mkdir -p /opt/hmb/license
+	cp hmb.lic /opt/hmb/license
 
-#### Or link your own malware folder:
+build
 
-```bash
-$ docker run --rm -v /path/to/malware:/malware:ro malice/clamav FILE
+	docker build -t xxx/hmbd
 
-Usage: clamav [OPTIONS] COMMAND [arg...]
+run as webservice
 
-Malice ClamAV Plugin
+	docker run -e HM_LICENSE_PATH=/opt/hmb/license/hmb.lic -v /opt/hmb/license:/opt/hmb/license -d -p 8080:8080 xxx/hmbd web
 
-Version: v0.1.0, BuildTime: 20160214
+	curl -F 'filename=@testshell.php' localhost:8080/file?timeout=10s
 
-Author:
-  blacktop - <https://github.com/blacktop>
+	curl -F 'zipname=@testshell.zip' localhost:8080/zip?timeout=60s
 
-Options:
-  --verbose, -V         verbose output
-  --table, -t	       output as Markdown table
-  --callback, -c	    POST results to Malice webhook [$MALICE_ENDPOINT]
-  --proxy, -x	       proxy settings for Malice webhook endpoint [$MALICE_PROXY]
-  --timeout value       malice plugin timeout (in seconds) (default: 60) [$MALICE_TIMEOUT]    
-  --elasitcsearch value elasitcsearch address for Malice to store results [$MALICE_ELASTICSEARCH]   
-  --help, -h	        show help
-  --version, -v	     print the version
 
-Commands:
-  update	Update virus definitions
-  web       Create a ClamAV scan web service  
-  help		Shows a list of commands or help for one command
+`timeout` set scan max timeout
 
-Run 'clamav COMMAND --help' for more information on a command.
-```
+version
+
+	docker run xxx/hmbd version
+
+update
+
+	docker run xxx/hmbd update
+
 
 ## Sample Output
 
 ### JSON:
+scan as a zip
+
+```json
+	{
+		  "suspious_list": [],
+		  "black_list": [
+		    {
+		      "judger": "FEATURE",
+		      "advice": "DEL",
+		      "type": "一句话后门",
+		      "name": "/dev/shm/scan_089524826/file277982036/scan_019678371",
+		      "md5": "8d6428492359c27b163648a5888da9da"
+		    },
+		    {
+		      "judger": "FEATURE",
+		      "advice": "DEL",
+		      "type": "一句话后门",
+		      "name": "/dev/shm/scan_089524826/shell.php",
+		      "md5": "8d6428492359c27b163648a5888da9da"
+		    },
+		    {
+		      "judger": "FEATURE",
+		      "advice": "DEL",
+		      "type": "一句话后门",
+		      "name": "/dev/shm/scan_089524826/shell1.php",
+		      "md5": "8d6428492359c27b163648a5888da9da"
+		    }
+		  ],
+		  "app_version": "1.0.3 hmb#linux-amd64.c339720",
+		  "rule_version": "6",
+		  "cost": 0,
+		  "end_time": "2017-09-22T10:30:31.036382428+08:00",
+		  "start_time": "2017-09-22T10:30:30.868960028+08:00",
+		  "b_count": 3,
+		  "w_count": 0,
+		  "s_count": 0,
+		  "cloud_valid": true,
+		  "jw_count": 0,
+		  "jb_count": 0,
+		  "m_count": 0,
+		  "f_total": 3
+		}
+```
+
+scan as a file
+
 
 ```json
 {
-  "clamav": {
-    "infected": true,
-    "result": "Eicar-Test-Signature",
-    "engine": "0.99.2",
-    "known": "5630857",
-    "updated": "20170123",
-    "error": ""
-  }
+  "suspious_list": [],
+  "black_list": [
+    {
+      "judger": "FEATURE",
+      "advice": "DEL",
+      "type": "一句话后门",
+      "name": "/scan_881052458",
+      "md5": "8d6428492359c27b163648a5888da9da"
+    }
+  ],
+  "app_version": "1.0.3 hmb#linux-amd64.c339720",
+  "rule_version": "6",
+  "cost": 0,
+  "end_time": "2017-09-22T10:27:17.932094512+08:00",
+  "start_time": "2017-09-22T10:27:17.764498329+08:00",
+  "b_count": 1,
+  "w_count": 0,
+  "s_count": 0,
+  "cloud_valid": true,
+  "jw_count": 0,
+  "jb_count": 0,
+  "m_count": 0,
+  "f_total": 1
 }
 ```
-
-### Markdown:
-
----
-
-#### ClamAV
-
-| Infected | Result               | Engine | Updated  |
-|----------|----------------------|--------|----------|
-| true     | Eicar-Test-Signature | 0.99.2 | 20170123 |
-
----
 
 Documentation
 -------------
@@ -95,17 +131,12 @@ Documentation
 
 ### Issues
 
-Find a bug? Want more features? Find something missing in the documentation? Let me know! Please don't hesitate to [file an issue](https://github.com/malice-plugins/clamav/issues/new).
+Find a bug? Want more features? Find something missing in the documentation? Let me know! Please don't hesitate to [file an issue](https://github.com/chennqqi/hmbd/issues/new).
 
 ### CHANGELOG
 
-See [`CHANGELOG.md`](https://github.com/malice-plugins/clamav/blob/master/CHANGELOG.md)
+See [`CHANGELOG.md`](https://github.com/chennqqi/hmbd/blob/master/CHANGELOG.md)
 
-### Contributing
-
-[See all contributors on GitHub](https://github.com/malice-plugins/clamav/graphs/contributors).
-
-Please update the [CHANGELOG.md](https://github.com/malice-plugins/clamav/blob/master/CHANGELOG.md) and submit a [Pull Request on GitHub](https://help.github.com/articles/using-pull-requests/).
 ### License
 
-MIT Copyright (c) 2016-2017 **blacktop**
+MIT 
