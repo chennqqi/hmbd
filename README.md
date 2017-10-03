@@ -1,7 +1,7 @@
 hmbd
 =============
 
-This repository contains a **Dockerfile** of [ClamAV](http://www.clamav.net/lang/en/) for [Docker](https://www.docker.io/)'s [trusted build](https://index.docker.io/u/malice/clamav/) published to the public [DockerHub](https://index.docker.io/).
+This repository contains a **Dockerfile** of [hmbd](https://github.com/chennqqi/hmbd/) for [Docker](https://www.docker.io/)'s [trusted build](https://index.docker.io/u/sort/hmbd/) published to the public [DockerHub](https://index.docker.io/).
 
 ### Dependencies
 

@@ -159,7 +159,7 @@ func (s *Web) scanZip(c *gin.Context) {
 	defer src.Close()
 	f, err := ioutil.TempFile("/dev/shm", "zip_")
 	if err != nil {
-		c.String(http.StatusBadRequest, fmt.Sprintf("net tmp file err: %s", err.Error()))
+		c.String(http.StatusBadRequest, fmt.Sprintf("new tmp file err: %s", err.Error()))
 		return
 	}
 	defer os.Remove(f.Name())
