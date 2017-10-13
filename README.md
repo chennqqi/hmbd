@@ -27,12 +27,17 @@ run as webservice
 
 	docker run -e HM_LICENSE_PATH=/opt/hmb/license/hmb.lic -v /opt/hmb/license:/opt/hmb/license -d -p 8080:8080 xxx/hmbd web
 
-	curl -F 'filename=@testshell.php' localhost:8080/file?timeout=10s
+	curl -F 'filename=@testshell.php' localhost:8080/file?timeout=10s?callback=http://api.xxx.com/result
 
-	curl -F 'zipname=@testshell.zip' localhost:8080/zip?timeout=60s
+	curl -F 'zipname=@testshell.zip' localhost:8080/zip?timeout=60s?callback=http://api.xxx.com/result
 
 
 `timeout` set scan max timeout
+
+`calback` set result call back
+	if you want set callback once, but keep for all, set to docker run
+	add to docker run env ` -e HMBD_CALLBACK=http://api.xxx.com/result`
+	
 
 version
 

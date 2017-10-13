@@ -4,12 +4,12 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
-	"strings"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,8 +17,9 @@ import (
 )
 
 type Web struct {
-	fileto time.Duration
-	zipto  time.Duration
+	fileto   time.Duration
+	zipto    time.Duration
+	callback string
 }
 
 func (s *Web) version(c *gin.Context) {
@@ -39,11 +40,12 @@ func (s *Web) scanFile(c *gin.Context) {
 
 	upf, err := c.FormFile("filename")
 	if err != nil {
-
+		c.String(http.StatusBadRequest, fmt.Sprintf("get form err: %s", err.Error()))
+		return
 	}
 	src, err := upf.Open()
 	if err != nil {
-		c.String(http.StatusBadRequest, fmt.Sprintf("get form err: %s", err.Error()))
+		c.String(http.StatusBadRequest, fmt.Sprintf("open form err: %s", err.Error()))
 		return
 	}
 	defer src.Close()
@@ -64,6 +66,7 @@ func (s *Web) scanFile(c *gin.Context) {
 	//TODO: call hm scan dir
 	c.Header("Content-type", "application/json")
 	r1 := strings.Replace(r, tmpDir, "", -1)
+	s.doCallback(c, r1)
 	c.String(200, r1)
 }
 
@@ -185,12 +188,26 @@ func (s *Web) scanZip(c *gin.Context) {
 	r, err := hmScanDir(tmpDir, to)
 	c.Header("Content-type", "application/json")
 	r1 := strings.Replace(r, tmpDir, "", -1)
+	s.doCallback(c, r1)
 	c.String(200, r1)
+}
+
+func (s *Web) doCallback(c *gin.Context, r string) {
+	callback := c.Query("callback")
+	if callback == "" {
+		callback = s.callback
+	}
+	if callback != "" {
+		go func(r string) {
+			body := strings.NewReader(r)
+			http.Post(callback, "application/json", body)
+		}(r)
+	}
 }
 
 func hmScanDir(dir string, to time.Duration) (string, error) {
 	fmt.Println("start scan ", dir)
-//	time.Sleep(time.Second*20)
+	//	time.Sleep(time.Second*20)
 	ctx, cancel := context.WithTimeout(context.TODO(), to)
 	defer cancel()
 	return utils.RunCommand(ctx, "hmb", "call", dir)
