@@ -34,9 +34,11 @@ run as webservice
 
 `timeout` set scan max timeout
 
-`calback` set result call back
+`callback` set result call back
 	if you want set callback once, but keep for all, set to docker run
 	add to docker run env ` -e HMBD_CALLBACK=http://api.xxx.com/result`
+	priority:
+		httprequest param>run param>docker -e option
 	
 
 version
