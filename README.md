@@ -21,7 +21,9 @@ copy license
 
 build
 
-	docker build -t xxx/hmbd
+	git clone https://github.com/chennqqi/hmbd.git
+	cd hmbd
+	docker build -t xxx/hmbd .
 
 run as webservice
 
