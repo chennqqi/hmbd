@@ -10,7 +10,7 @@ This repository contains a **Dockerfile** of [hmbd](https://github.com/chennqqi/
 ### Installation
 
 1.	Install [Docker](https://www.docker.io/).
-2.	Download [trusted build](https://hub.docker.com/r/malice/clamav/) from public [DockerHub](https://hub.docker.com): `docker pull malice/clamav`
+2.	Download [hmbd](https://github.com/chennqqi/hmbd/) for [Docker](https://www.docker.io/)'s [trusted build](https://index.docker.io/u/sort/hmbd/) published to the public [DockerHub](https://index.docker.io/).
 
 ### Usage
 
