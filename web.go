@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chennqqi/goutils/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/malice-plugins/go-plugin-utils/utils"
+	mutils "github.com/malice-plugins/go-plugin-utils/utils"
 )
 
 type Web struct {
@@ -177,7 +178,7 @@ func (s *Web) scanZip(c *gin.Context) {
 	}
 	defer os.Remove(tmpDir)
 
-	if err = utils.Unzip(f.Name(), tmpDir); err != nil {
+	if err = utils.UnzipSafe(f.Name(), tmpDir, 0); err != nil {
 		c.String(http.StatusInternalServerError,
 			fmt.Sprintf("unzip zip file err: %s", err.Error()))
 		return
@@ -210,5 +211,5 @@ func hmScanDir(dir string, to time.Duration) (string, error) {
 	//	time.Sleep(time.Second*20)
 	ctx, cancel := context.WithTimeout(context.TODO(), to)
 	defer cancel()
-	return utils.RunCommand(ctx, "hmb", "call", dir)
+	return mutils.RunCommand(ctx, "hmb", "call", dir)
 }
