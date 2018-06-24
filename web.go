@@ -179,11 +179,12 @@ func (s *Web) scanZip(c *gin.Context) {
 	defer os.Remove(tmpDir)
 
 	if err = utils.UnzipSafe(f.Name(), tmpDir, 0); err != nil {
+	//if err = utils.Unzip(f.Name(), tmpDir); err != nil {
 		c.String(http.StatusInternalServerError,
 			fmt.Sprintf("unzip zip file err: %s", err.Error()))
 		return
 	}
-	defer os.RemoveAll(tmpDir)
+//	defer os.RemoveAll(tmpDir)
 
 	//TODO:
 	r, err := hmScanDir(tmpDir, to)

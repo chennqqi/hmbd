@@ -26,3 +26,8 @@ _testmain.go
 *.bu
 *.bak
 *.lic
+/data.db
+/hmb
+/hmb.yml
+/hmbd
+/cache.db
