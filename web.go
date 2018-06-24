@@ -184,7 +184,7 @@ func (s *Web) scanZip(c *gin.Context) {
 			fmt.Sprintf("unzip zip file err: %s", err.Error()))
 		return
 	}
-//	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir)
 
 	//TODO:
 	r, err := hmScanDir(tmpDir, to)
