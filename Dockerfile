@@ -11,14 +11,7 @@ COPY . /go/src/github.com/chennqqi/hmbd
 #RUN apk --update add --no-cache clamav ca-certificates
 RUN apk --update add --no-cache ca-certificates
 RUN apk --update add --no-cache -t .build-deps \
-                    build-base \
-                    mercurial \
-                    musl-dev \
-                    openssl \
-                    bash \
-                    wget \
                     git \
-                    gcc \
                     go \
   && echo "Building hm webshell scanner deamon Go binary..." \
   && export GOPATH=/go \
