@@ -37,7 +37,7 @@ RUN chown malice -R /malware
 WORKDIR /malware
 
 # Add hmb soft 
-ADD http://down.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
+ADD http://dl.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
 RUN tar xvf /malware/hmb.tgz -C /malware
 RUN ln -s /malware/hmb /bin/hmb
 
