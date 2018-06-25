@@ -202,7 +202,13 @@ func (s *Web) doCallback(c *gin.Context, r string) {
 	if callback != "" {
 		go func(r string) {
 			body := strings.NewReader(r)
-			http.Post(callback, "application/json", body)
+			resp, err := http.Post(callback, "application/json", body)
+			if err != nil{
+				fmt.Printf("do callback(%v) error: %v\n", callback, err)
+			}
+			if resp.Body != nil{
+				defer resp.Body.Close()
+			}
 		}(r)
 	}
 }
