@@ -1,0 +1,38 @@
+FROM alpine:3.7
+LABEL maintainer "q@shellpub.com"
+
+
+ARG app_name=hmbd
+
+RUN set -x \
+  && echo "===> Add malice user and malware folder..." \
+  && addgroup malice \
+  && adduser -S -G malice malice \
+  && mkdir /malware
+
+RUN apk --update add ca-certificates
+RUN apk --update add --no-cache -t .build-deps \
+	tini \
+	su-exec \
+  && echo "===> Building hmbd daemon..." \
+  && apk del --purge .build-deps
+
+## fix golang link
+RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
+
+# Add hmb && phpdecoder soft 
+ENV HMB_DECODER_PHP /malware/php
+COPY php64.tgz /malware/
+ADD http://dl.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
+COPY ${appname} /malware/
+RUN chmod +x /malware/${appname} \
+	&& tar xvf /malware/hmb.tgz -C /malware \
+	&& tar xvf /malware/php64.tgz -C /malware \
+	&& ln -s /malware/hmb /bin/hmb
+RUN chown -R malice:malice /malware
+USER malice
+WORKDIR /malware
+
+ENTRYPOINT ["./hmbd"]
+#ENTRYPOINT ["su-exec","malice","/sbin/tini","--","avscan"]
+CMD ["--help"]
