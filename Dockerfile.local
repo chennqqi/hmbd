@@ -22,7 +22,7 @@ RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 # Add hmb soft 
 ADD http://dl.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
-COPY hmbd /malware/
+COPY ${appname} /malware/
 RUN chmod +x /malware/${appname} \
 	&& tar xvf /malware/hmb.tgz -C /malware \
 	&& ln -s /malware/hmb /bin/hmb
