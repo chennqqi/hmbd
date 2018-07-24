@@ -135,7 +135,7 @@ func (s *Web) Run(port int) {
 	r := gin.Default()
 	r.POST("/zip", s.scanZip)
 	r.POST("/file", s.scanFile)
-	r.GET("/version", s.scanFile)
+	r.GET("/version", s.version)
 	r.Run(fmt.Sprintf(":%d", port))
 }
 
