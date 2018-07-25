@@ -1,4 +1,4 @@
-FROM alpine:3.7
+FROM frolvlad/alpine-glibc
 LABEL maintainer "q@shellpub.com"
 
 
@@ -17,15 +17,19 @@ RUN apk --update add --no-cache -t .build-deps \
   && echo "===> Building hmbd daemon..." \
   && apk del --purge .build-deps
 
-## fix golang link
-RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
-
-# Add hmb soft 
+# Add hmb && phpdecoder soft 
+ENV HMB_DECODER_PHP /malware/php
+COPY php64.tgz /malware/
 ADD http://dl.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
-COPY ${appname} /malware/
-RUN chmod +x /malware/${appname} \
+#COPY hmb /malware
+COPY ${app_name} /malware/
+RUN chmod +x /malware/${app_name} \
+	&& tar xvf /malware/php64.tgz -C /malware \
 	&& tar xvf /malware/hmb.tgz -C /malware \
-	&& ln -s /malware/hmb /bin/hmb
+	&& rm -f /malware/php64.tgz \ 
+	&& ln -s /malware/hmb /bin/hmb \
+	&& rm -f /malware/hmb.tgz \ 
+	&& rm -f /malware/hmb-linux-amd64.tgz
 RUN chown -R malice:malice /malware
 USER malice
 WORKDIR /malware
