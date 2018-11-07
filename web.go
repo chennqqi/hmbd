@@ -333,17 +333,16 @@ func (s *Web) scanZip(c *gin.Context) {
 }
 
 func (s *Web) doCallback(callback string, r string) {
-	if callback != "" {
-		go func(r, cb string) {
-			body := strings.NewReader(r)
-			resp, err := http.Post(callback, "application/json", body)
-			if err != nil {
-				fmt.Printf("do callback(%v) error: %v\n", cb, err)
-				return
-			}
-			defer resp.Body.Close()
-		}(r, callback)
-	}
+	go func(r, cb string) {
+		body := strings.NewReader(r)
+		resp, err := http.Post(cb, "application/json", body)
+		if err != nil {
+			fmt.Printf("do callback(%v) error: %v\n", cb, err)
+			return
+		}
+		defer resp.Body.Close()
+	}(r, callback)
+
 }
 
 func hmScanDir(dir string, to time.Duration) (string, error) {
