@@ -22,10 +22,12 @@ RUN mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2
 
 # Add hmb soft 
 ADD http://dl.shellpub.com/hmb/latest/hmb-linux-amd64.tgz /malware/hmb.tgz
-COPY ${appname} /malware/
+COPY VERSION /malware/
+COPY ${app_name} /malware/
 RUN chmod +x /malware/${appname} \
 	&& tar xvf /malware/hmb.tgz -C /malware \
-	&& ln -s /malware/hmb /bin/hmb
+	&& ln -s /malware/hmb /bin/hmb \
+	&& rm /malware/hmb.tgz
 RUN chown -R malice:malice /malware
 USER malice
 WORKDIR /malware

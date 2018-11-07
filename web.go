@@ -73,7 +73,7 @@ func NewWeb(dir string) (*Web, error) {
 }
 
 func (s *Web) version(c *gin.Context) {
-	txt, _ := ioutil.ReadFile("/opt/hmb/VERSION")
+	txt, _ := ioutil.ReadFile("/malware/VERSION")
 	c.Data(200, "", txt)
 }
 
@@ -265,7 +265,7 @@ func (s *Web) Run(port int, ctx context.Context) error {
 	r := gin.Default()
 	r.POST("/zip", s.scanZip)
 	r.POST("/file", s.scanFile)
-	r.GET("/version", s.scanFile)
+	r.GET("/version", s.version)
 	r.GET("/queued", s.queued)
 
 	httpServer := &http.Server{
