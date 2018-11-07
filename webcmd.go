@@ -3,18 +3,21 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/chennqqi/goutils/closeevent"
 	"github.com/google/subcommands"
 )
 
 type webCmd struct {
-	w        Web
+	w        *Web
 	port     int
 	fileto   string
 	zipto    string
 	callback string
+	datadir  string
 }
 
 func (p *webCmd) Name() string {
@@ -33,6 +36,7 @@ func (p *webCmd) SetFlags(f *flag.FlagSet) {
 	f.IntVar(&p.port, "p", 8080, "set port")
 	f.StringVar(&p.zipto, "timeout", "60s", "set scan timeout")
 	f.StringVar(&p.callback, "callback", "", "set callback addr")
+	f.StringVar(&p.datadir, "datadir", "/dev/shm/.persist", "set data dir")
 }
 
 func (p *webCmd) Execute(context.Context, *flag.FlagSet, ...interface{}) subcommands.ExitStatus {
@@ -44,9 +48,24 @@ func (p *webCmd) Execute(context.Context, *flag.FlagSet, ...interface{}) subcomm
 		p.callback = os.Getenv("HMBD_CALLBACK")
 	}
 
+	w, err := NewWeb(p.datadir)
+	if err != nil {
+		fmt.Println("new web error:", err)
+		return subcommands.ExitFailure
+	}
+	p.w = w
 	p.w.fileto = to
 	p.w.zipto = to
 	p.w.callback = p.callback
-	p.w.Run(p.port)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go w.Run(p.port, ctx)
+
+	closeevent.Wait(func(s os.Signal) {
+		defer cancel()
+		ctx := context.Background()
+		w.Shutdown(ctx)
+	}, os.Interrupt)
+
 	return subcommands.ExitSuccess
 }
