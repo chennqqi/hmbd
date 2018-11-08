@@ -28,8 +28,46 @@ const (
 )
 
 type task struct {
-	Dir      string `json:"dir"`
-	Callback string `json:"callback"`
+	Dir      string   `json:"dir"`
+	Callback string   `json:"callback"`
+	To       Duration `json:"to"`
+}
+
+type Duration time.Duration
+
+func (c Duration) MarshalYAML() (interface{}, error) {
+	return time.Duration(c).String(), nil
+}
+
+func (c *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	err := unmarshal(&s)
+	if err != nil {
+		return err
+	}
+	to, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	*c = Duration(to)
+	return err
+}
+
+func (c Duration) MarshalJSON() ([]byte, error) {
+	return []byte(time.Duration(c).String()), nil
+}
+
+func (c Duration) String() string {
+	return time.Duration(c).String()
+}
+
+func (c *Duration) UnmarshalJSON(raw []byte) error {
+	to, err := time.ParseDuration(string(raw))
+	if err != nil {
+		return nil
+	}
+	*c = Duration(to)
+	return nil
 }
 
 type Web struct {
@@ -100,7 +138,8 @@ func (s *Web) queued(c *gin.Context) {
 
 func (s *Web) scanFile(c *gin.Context) {
 	var err error
-	to := s.zipto
+	to := s.fileto
+
 	timeout, ok := c.GetQuery("timeout")
 	if ok {
 		to, err = time.ParseDuration(timeout)
@@ -124,7 +163,7 @@ func (s *Web) scanFile(c *gin.Context) {
 		return
 	}
 	defer src.Close()
-	tmpDir, err := ioutil.TempDir("/dev/shm", "file")
+	tmpDir, err := ioutil.TempDir(s.tmpDir, "file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, CR{
 			1, fmt.Sprintf("new temp dir err: %s", err.Error()),
@@ -158,6 +197,7 @@ func (s *Web) scanFile(c *gin.Context) {
 		var t task
 		t.Dir = tmpDir
 		t.Callback = callback
+		t.To = Duration(to)
 		txt, _ := json.Marshal(t)
 		queued, err := db.LPush([]byte(PERSIST_LISTKEY_NAME), txt)
 		if err != nil {
@@ -252,7 +292,7 @@ __FOR_LOOP:
 				continue
 			}
 			defer os.RemoveAll(t.Dir)
-			r, err := hmScanDir(t.Dir, 0)
+			r, err := hmScanDir(t.Dir, time.Duration(t.To))
 			if err != nil {
 				fmt.Println("hmScanDir ERROR:", err)
 				continue
@@ -327,7 +367,7 @@ func (s *Web) scanZip(c *gin.Context) {
 	io.Copy(f, src)
 	f.Close()
 
-	tmpDir, err := ioutil.TempDir("/dev/shm", "scan_")
+	tmpDir, err := ioutil.TempDir(s.tmpDir, "scan_")
 	if err != nil {
 		c.String(http.StatusInternalServerError,
 			fmt.Sprintf("save zip file err: %s", err.Error()))

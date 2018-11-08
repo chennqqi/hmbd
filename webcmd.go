@@ -36,7 +36,8 @@ func (p *webCmd) Usage() string {
 
 func (p *webCmd) SetFlags(f *flag.FlagSet) {
 	f.IntVar(&p.port, "p", 8080, "set port")
-	f.StringVar(&p.zipto, "timeout", "60s", "set scan timeout")
+	f.StringVar(&p.zipto, "timeout", "60s", "set scan dir timeout")
+	f.StringVar(&p.fileto, "fileto", "20s", "set scan file timeout")
 	f.StringVar(&p.callback, "callback", "", "set callback addr")
 	f.StringVar(&p.datadir, "data", "/dev/shm", "set data dir")
 	f.StringVar(&p.indexdir, "index", "/dev/shm/.persist", "set index dir")
@@ -44,10 +45,15 @@ func (p *webCmd) SetFlags(f *flag.FlagSet) {
 }
 
 func (p *webCmd) Execute(context.Context, *flag.FlagSet, ...interface{}) subcommands.ExitStatus {
-	to, err := time.ParseDuration(p.zipto)
+	zipTo, err := time.ParseDuration(p.zipto)
 	if err != nil {
-		to, _ = time.ParseDuration("60s")
+		zipTo, _ = time.ParseDuration("60s")
 	}
+	fileTo, err := time.ParseDuration(p.fileto)
+	if err != nil {
+		fileTo, _ = time.ParseDuration("20s")
+	}
+
 	if p.callback == "" {
 		p.callback = os.Getenv("HMBD_CALLBACK")
 	}
@@ -58,8 +64,8 @@ func (p *webCmd) Execute(context.Context, *flag.FlagSet, ...interface{}) subcomm
 		return subcommands.ExitFailure
 	}
 	p.w = w
-	p.w.fileto = to
-	p.w.zipto = to
+	p.w.fileto = zipTo
+	p.w.zipto = fileTo
 	p.w.callback = p.callback
 
 	ctx, cancel := context.WithCancel(context.Background())
