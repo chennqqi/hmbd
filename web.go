@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -54,7 +55,9 @@ func (c *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func (c Duration) MarshalJSON() ([]byte, error) {
-	return []byte(time.Duration(c).String()), nil
+	s := c.String()
+	//fmt.Println("Marshal:", s)
+	return []byte(`"` + s + `"`), nil
 }
 
 func (c Duration) String() string {
@@ -62,6 +65,12 @@ func (c Duration) String() string {
 }
 
 func (c *Duration) UnmarshalJSON(raw []byte) error {
+	if len(raw) < 3 {
+		return errors.New("No data")
+	}
+	if raw[0] == '"' {
+		raw = raw[1 : len(raw)-1]
+	}
 	to, err := time.ParseDuration(string(raw))
 	if err != nil {
 		return nil
@@ -198,9 +207,12 @@ func (s *Web) scanFile(c *gin.Context) {
 		t.Dir = tmpDir
 		t.Callback = callback
 		t.To = Duration(to)
-		txt, _ := json.Marshal(t)
+		txt, err := json.Marshal(t)
+		//fmt.Println("LPUSH", string(txt), err)
 		queued, err := db.LPush([]byte(PERSIST_LISTKEY_NAME), txt)
+		//fmt.Println("LPUSH QUEUED", queued, err)
 		if err != nil {
+			fmt.Println("LPUSH ERROR:", err, queued)
 			c.JSON(http.StatusBadRequest, CR{
 				1, fmt.Sprintf("new temp file err: %s", err.Error()),
 			})
@@ -274,35 +286,48 @@ func Unzip(src, dest string) error {
 func (s *Web) scanRoute(ctx context.Context) {
 	defer s.wg.Done()
 	db := s.db
-	ticker := time.NewTicker(500 * time.Second)
+	ticker := time.NewTicker(time.Second / 2)
 	defer ticker.Stop()
+	//fmt.Println("scanRoute RUN")
 
 __FOR_LOOP:
 	for {
 		select {
 		case <-ticker.C:
-			txt, err := db.RPop([]byte(PERSIST_LISTKEY_NAME))
-			if err != nil {
-				continue
+			for {
+				txt, err := db.RPop([]byte(PERSIST_LISTKEY_NAME))
+				if err != nil || len(txt) == 0 {
+					fmt.Println("RPop ERROR:", err, string(txt))
+					break
+				}
+				var t task
+				err = json.Unmarshal(txt, &t)
+				if err != nil {
+					fmt.Println("json.Unmarshal Error:", err, string(txt))
+					continue
+				}
+
+				r, err := hmScanDir(t.Dir, time.Duration(t.To))
+				if err != nil {
+					fmt.Println("hmScanDir ERROR:", err)
+					err = os.RemoveAll(t.Dir)
+					if err != nil {
+						fmt.Println("RemoveAll ERROR:", err)
+					}
+					continue
+				}
+				err = os.RemoveAll(t.Dir)
+				if err != nil {
+					fmt.Println("RemoveAll ERROR:", err)
+				}
+				s.doCallback(t.Callback, string(r))
 			}
-			var t task
-			err = json.Unmarshal(txt, &t)
-			if err != nil {
-				fmt.Println("json.Unmarshal Error:", err)
-				continue
-			}
-			defer os.RemoveAll(t.Dir)
-			r, err := hmScanDir(t.Dir, time.Duration(t.To))
-			if err != nil {
-				fmt.Println("hmScanDir ERROR:", err)
-				continue
-			}
-			s.doCallback(t.Callback, string(r))
 
 		case <-ctx.Done():
 			break __FOR_LOOP
 		}
 	}
+	//fmt.Println("scanRoute QUIT")
 }
 
 func (s *Web) Shutdown(ctx context.Context) error {
