@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chennqqi/goutils/utils"
@@ -36,18 +37,29 @@ type Web struct {
 	zipto    time.Duration
 	callback string
 
-	db         *nodb.DB
-	inst       *nodb.Nodb
-	scanQuitCh chan struct{}
-	server     *http.Server
+	tmpDir   string
+	indexDir string
+	batch    int
+
+	db     *nodb.DB
+	inst   *nodb.Nodb
+	wg     sync.WaitGroup
+	server *http.Server
+	cancel context.CancelFunc
 }
 
-func NewWeb(dir string) (*Web, error) {
+func NewWeb(dataDir, indexDir string, batch int) (*Web, error) {
 	var web Web
 	cfg := new(config.Config)
-	cfg.DataDir = dir
+	cfg.DataDir = indexDir
 
-	err := os.MkdirAll(cfg.DataDir, 0755)
+	err := os.MkdirAll(dataDir, 0755)
+	if !os.IsExist(err) && err != nil {
+		fmt.Printf("mkdir tmp dir error: \n", err)
+		return nil, err
+	}
+
+	err = os.MkdirAll(cfg.DataDir, 0755)
 	if !os.IsExist(err) && err != nil {
 		fmt.Printf("mkdir leveldb dir failed, error: \n", err)
 		return nil, err
@@ -59,16 +71,15 @@ func NewWeb(dir string) (*Web, error) {
 		return nil, err
 	}
 
-	err = os.MkdirAll(cfg.DataDir, 0755)
-	if !os.IsExist(err) && err != nil {
-		fmt.Printf("mkdir leveldb dir failed, error: \n", err)
-		return nil, err
-	}
 	db, _ := dbs.Select(0)
 
-	web.scanQuitCh = make(chan struct{})
 	web.db = db
 	web.inst = dbs
+	web.tmpDir = dataDir
+	web.batch = 1
+	if batch > 1 {
+		web.batch = batch
+	}
 	return &web, nil
 }
 
@@ -221,6 +232,7 @@ func Unzip(src, dest string) error {
 }
 
 func (s *Web) scanRoute(ctx context.Context) {
+	defer s.wg.Done()
 	db := s.db
 	ticker := time.NewTicker(500 * time.Second)
 	defer ticker.Stop()
@@ -251,12 +263,12 @@ __FOR_LOOP:
 			break __FOR_LOOP
 		}
 	}
-	close(s.scanQuitCh)
 }
 
 func (s *Web) Shutdown(ctx context.Context) error {
 	err := s.server.Shutdown(ctx)
-	<-s.scanQuitCh
+	s.cancel()
+	s.wg.Wait()
 	return err
 }
 
@@ -272,6 +284,14 @@ func (s *Web) Run(port int, ctx context.Context) error {
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: r,
 	}
+	scanctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	for i := 0; i < s.batch; i++ {
+		s.wg.Add(1)
+		go s.scanRoute(scanctx)
+	}
+
 	s.server = httpServer
 	return httpServer.ListenAndServe()
 }
@@ -298,7 +318,7 @@ func (s *Web) scanZip(c *gin.Context) {
 		return
 	}
 	defer src.Close()
-	f, err := ioutil.TempFile("/dev/shm", "zip_")
+	f, err := ioutil.TempFile(s.tmpDir, "zip_")
 	if err != nil {
 		c.String(http.StatusBadRequest, fmt.Sprintf("new tmp file err: %s", err.Error()))
 		return

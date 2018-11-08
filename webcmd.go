@@ -18,6 +18,8 @@ type webCmd struct {
 	zipto    string
 	callback string
 	datadir  string
+	indexdir string
+	batch    int
 }
 
 func (p *webCmd) Name() string {
@@ -36,7 +38,9 @@ func (p *webCmd) SetFlags(f *flag.FlagSet) {
 	f.IntVar(&p.port, "p", 8080, "set port")
 	f.StringVar(&p.zipto, "timeout", "60s", "set scan timeout")
 	f.StringVar(&p.callback, "callback", "", "set callback addr")
-	f.StringVar(&p.datadir, "datadir", "/dev/shm/.persist", "set data dir")
+	f.StringVar(&p.datadir, "data", "/dev/shm", "set data dir")
+	f.StringVar(&p.indexdir, "index", "/dev/shm/.persist", "set index dir")
+	f.IntVar(&p.batch, "batch", 1, "set batch route")
 }
 
 func (p *webCmd) Execute(context.Context, *flag.FlagSet, ...interface{}) subcommands.ExitStatus {
@@ -48,7 +52,7 @@ func (p *webCmd) Execute(context.Context, *flag.FlagSet, ...interface{}) subcomm
 		p.callback = os.Getenv("HMBD_CALLBACK")
 	}
 
-	w, err := NewWeb(p.datadir)
+	w, err := NewWeb(p.datadir, p.indexdir, p.batch)
 	if err != nil {
 		fmt.Println("new web error:", err)
 		return subcommands.ExitFailure
