@@ -3,8 +3,6 @@ package main
 import (
 	"archive/zip"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,13 +13,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chennqqi/goutils/persistlist"
+	utime "github.com/chennqqi/goutils/time"
 	"github.com/chennqqi/goutils/utils"
 
 	"github.com/gin-gonic/gin"
 	mutils "github.com/malice-plugins/go-plugin-utils/utils"
-
-	"github.com/lunny/nodb"
-	"github.com/lunny/nodb/config"
 )
 
 const (
@@ -29,104 +26,46 @@ const (
 )
 
 type task struct {
-	Dir      string   `json:"dir"`
-	Callback string   `json:"callback"`
-	To       Duration `json:"to"`
-}
-
-type Duration time.Duration
-
-func (c Duration) MarshalYAML() (interface{}, error) {
-	return time.Duration(c).String(), nil
-}
-
-func (c *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var s string
-	err := unmarshal(&s)
-	if err != nil {
-		return err
-	}
-	to, err := time.ParseDuration(s)
-	if err != nil {
-		return err
-	}
-	*c = Duration(to)
-	return err
-}
-
-func (c Duration) MarshalJSON() ([]byte, error) {
-	s := c.String()
-	//fmt.Println("Marshal:", s)
-	return []byte(`"` + s + `"`), nil
-}
-
-func (c Duration) String() string {
-	return time.Duration(c).String()
-}
-
-func (c *Duration) UnmarshalJSON(raw []byte) error {
-	if len(raw) < 3 {
-		return errors.New("No data")
-	}
-	if raw[0] == '"' {
-		raw = raw[1 : len(raw)-1]
-	}
-	to, err := time.ParseDuration(string(raw))
-	if err != nil {
-		return nil
-	}
-	*c = Duration(to)
-	return nil
+	Dir      string         `json:"dir"`
+	Callback string         `json:"callback"`
+	To       utime.Duration `json:"to"`
 }
 
 type Web struct {
-	fileto   time.Duration
-	zipto    time.Duration
+	fileto   utime.Duration
+	zipto    utime.Duration
 	callback string
 
-	tmpDir   string
-	indexDir string
-	batch    int
+	tmpDir string
+	batch  int
 
-	db     *nodb.DB
-	inst   *nodb.Nodb
 	wg     sync.WaitGroup
 	server *http.Server
 	cancel context.CancelFunc
+
+	list persistlist.PersistList
 }
 
 func NewWeb(dataDir, indexDir string, batch int) (*Web, error) {
 	var web Web
-	cfg := new(config.Config)
-	cfg.DataDir = indexDir
 
-	err := os.MkdirAll(dataDir, 0755)
+	list, err := persistlist.NewNodbList(indexDir, PERSIST_LISTKEY_NAME)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.MkdirAll(dataDir, 0755)
 	if !os.IsExist(err) && err != nil {
 		fmt.Printf("mkdir tmp dir error: \n", err)
 		return nil, err
 	}
 
-	err = os.MkdirAll(cfg.DataDir, 0755)
-	if !os.IsExist(err) && err != nil {
-		fmt.Printf("mkdir leveldb dir failed, error: \n", err)
-		return nil, err
-	}
-
-	dbs, err := nodb.Open(cfg)
-	if err != nil {
-		fmt.Printf("nodb: error opening db: %v", err)
-		return nil, err
-	}
-
-	db, _ := dbs.Select(0)
-
-	web.db = db
-	web.inst = dbs
 	web.tmpDir = dataDir
 	web.batch = 1
 	if batch > 1 {
 		web.batch = batch
 	}
+	web.list = list
 	return &web, nil
 }
 
@@ -136,8 +75,8 @@ func (s *Web) version(c *gin.Context) {
 }
 
 func (s *Web) queued(c *gin.Context) {
-	db := s.db
-	l, err := db.LLen([]byte(PERSIST_LISTKEY_NAME))
+	list := s.list
+	l, err := list.Len()
 	if err != nil {
 		c.String(400, "%v", err)
 		return
@@ -151,9 +90,9 @@ func (s *Web) scanFile(c *gin.Context) {
 
 	timeout, ok := c.GetQuery("timeout")
 	if ok {
-		to, err = time.ParseDuration(timeout)
-		if err != nil {
-			to = s.fileto
+		tto, err := time.ParseDuration(timeout)
+		if err == nil {
+			to = utime.Duration(tto)
 		}
 	}
 
@@ -196,30 +135,27 @@ func (s *Web) scanFile(c *gin.Context) {
 
 	if callback == "" {
 		defer os.RemoveAll(tmpDir)
-		r, _ := hmScanDir(tmpDir, to)
+		r, _ := hmScanDir(tmpDir, time.Duration(to))
 		c.Header("Content-type", "application/json")
 		r1 := strings.Replace(r, tmpDir, "", -1)
 		c.String(200, r1)
 	} else {
-		db := s.db
-
 		var t task
 		t.Dir = tmpDir
 		t.Callback = callback
-		t.To = Duration(to)
-		txt, err := json.Marshal(t)
-		//fmt.Println("LPUSH", string(txt), err)
-		queued, err := db.LPush([]byte(PERSIST_LISTKEY_NAME), txt)
-		//fmt.Println("LPUSH QUEUED", queued, err)
+		t.To = to
+
+		list := s.list
+		pending, err := list.Push(t)
+
 		if err != nil {
-			fmt.Println("LPUSH ERROR:", err, queued)
-			c.JSON(http.StatusBadRequest, CR{
-				1, fmt.Sprintf("new temp file err: %s", err.Error()),
+			c.JSON(500, CR{
+				1, fmt.Sprintf("add task err: %s", err.Error()),
 			})
 			return
 		}
 		c.JSON(200, CR{
-			0, fmt.Sprintf("queued %d", queued),
+			0, fmt.Sprintf("pending %d", pending),
 		})
 	}
 }
@@ -285,26 +221,24 @@ func Unzip(src, dest string) error {
 
 func (s *Web) scanRoute(ctx context.Context) {
 	defer s.wg.Done()
-	db := s.db
+
 	ticker := time.NewTicker(time.Second / 2)
 	defer ticker.Stop()
-	//fmt.Println("scanRoute RUN")
+
+	list := s.list
 
 __FOR_LOOP:
 	for {
 		select {
 		case <-ticker.C:
 			for {
-				txt, err := db.RPop([]byte(PERSIST_LISTKEY_NAME))
-				if err != nil || len(txt) == 0 {
-					fmt.Println("RPop ERROR:", err, string(txt))
-					break
-				}
 				var t task
-				err = json.Unmarshal(txt, &t)
-				if err != nil {
-					fmt.Println("json.Unmarshal Error:", err, string(txt))
-					continue
+				err := list.Pop(&t)
+				if err == persistlist.ErrNil {
+					break
+				} else {
+					fmt.Println("Pop Error:", err)
+					break
 				}
 
 				r, err := hmScanDir(t.Dir, time.Duration(t.To))
@@ -327,12 +261,14 @@ __FOR_LOOP:
 			break __FOR_LOOP
 		}
 	}
-	//fmt.Println("scanRoute QUIT")
 }
 
 func (s *Web) Shutdown(ctx context.Context) error {
+	list := s.list
 	err := s.server.Shutdown(ctx)
 	s.cancel()
+	list.Close()
+
 	s.wg.Wait()
 	return err
 }
@@ -371,9 +307,9 @@ func (s *Web) scanZip(c *gin.Context) {
 	to := s.zipto
 	timeout, ok := c.GetQuery("timeout")
 	if ok {
-		to, err = time.ParseDuration(timeout)
-		if err != nil {
-			to = s.zipto
+		tto, err := time.ParseDuration(timeout)
+		if err == nil {
+			to = utime.Duration(tto)
 		}
 	}
 
@@ -410,7 +346,7 @@ func (s *Web) scanZip(c *gin.Context) {
 	callback, _ := c.GetQuery("callback")
 
 	//TODO:
-	r, err := hmScanDir(tmpDir, to)
+	r, err := hmScanDir(tmpDir, time.Duration(to))
 	c.Header("Content-type", "application/json")
 	r1 := strings.Replace(r, tmpDir, "", -1)
 	s.doCallback(callback, r1)
@@ -425,9 +361,9 @@ func (s *Web) doCallback(callback string, r string) {
 			fmt.Printf("do callback(%v) error: %v\n", cb, err)
 			return
 		}
-		defer resp.Body.Close()
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
 	}(r, callback)
-
 }
 
 func hmScanDir(dir string, to time.Duration) (string, error) {
