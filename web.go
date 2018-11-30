@@ -236,7 +236,7 @@ __FOR_LOOP:
 				err := list.Pop(&t)
 				if err == persistlist.ErrNil {
 					break
-				} else {
+				} else if err != nil {
 					fmt.Println("Pop Error:", err)
 					break
 				}
